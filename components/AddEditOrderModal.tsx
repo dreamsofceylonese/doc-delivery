@@ -11,6 +11,7 @@ interface Props {
 }
 
 export default function AddEditOrderModal({ order, close, reload }: Props) {
+  const [order_id, setOrder_id] = useState(order.order_id || "")
   const [name, setName] = useState(order.name || "")
   const [address, setAddress] = useState(order.address || "")
   const [phone, setPhone] = useState(order.phone || "")
@@ -40,6 +41,7 @@ export default function AddEditOrderModal({ order, close, reload }: Props) {
 
   async function save() {
     const data: Partial<Order> = {
+      order_id,
       name,
       address,
       phone,
@@ -71,6 +73,7 @@ export default function AddEditOrderModal({ order, close, reload }: Props) {
 
         {/* Inputs */}
         <div className="space-y-2">
+          <Input label="Order ID" value={order_id} setValue={setOrder_id} />
           <Input label="Name" value={name} setValue={setName} />
           <Input label="Address" value={address} setValue={setAddress} />
           <Input label="Phone" value={phone} setValue={setPhone} />
