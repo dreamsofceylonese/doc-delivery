@@ -25,8 +25,8 @@ export default function AddEditOrderModal({ order, close, reload }: Props) {
   // Load products from supabase
   useEffect(() => {
     async function loadProducts() {
-      const { data, error } = await supabase.from("products").select("name")
-      if (!error && data) setProducts(data.map(p => p.name))
+      const { data, error } = await supabase.from("product_costing").select("product_name")
+      if (!error && data) setProducts(data.map(p => p.product_name))
     }
     loadProducts()
   }, [])
