@@ -20,12 +20,17 @@ export default function Dashboard() {
   const [showView, setShowView] = useState<null | Order>(null)
 
   const [currentPage, setCurrentPage] = useState(1)
-  const pageSize = 10
+  const [pageSize, setPageSize] = useState(10)
 
   async function loadOrders() {
+    const today = new Date()
+    const past7Days = new Date()
+    past7Days.setDate(today.getDate() - 7)
+
     const { data, error } = await supabase
       .from("prompt_express")
       .select("*")
+      .gte("date", past7Days.toISOString().split("T")[0])
       .order("date", { ascending: false })
 
     if (!error && data) {
@@ -39,27 +44,41 @@ export default function Dashboard() {
     loadOrders()
   }, [])
 
-  // LIVE FILTER: update whenever any input changes
   useEffect(() => {
-    let filtered = [...orders]
+    async function applyFilters() {
+      let query = supabase.from("prompt_express").select("*")
 
-    if (search) {
-      filtered = filtered.filter(o =>
-        `${o.order_id} ${o.name} ${o.phone}`
-          .toLowerCase()
-          .includes(search.toLowerCase())
-      )
+      if (dateFrom) query = query.gte("date", dateFrom)
+      if (dateTo) query = query.lte("date", dateTo)
+
+      const { data, error } = await query.order("date", { ascending: false })
+
+      if (!error && data) {
+        let filtered = [...data]
+
+        if (search) {
+          filtered = filtered.filter(o =>
+            `${o.order_id} ${o.name} ${o.phone}`
+              .toLowerCase()
+              .includes(search.toLowerCase())
+          )
+        }
+
+        if (status === "Pending Orders") filtered = filtered.filter(o => !o.tracking_details)
+        if (status === "Completed Orders") filtered = filtered.filter(o => o.tracking_details)
+
+        setOrders(data as Order[])
+        setFilteredOrders(filtered as Order[])
+        setCurrentPage(1)
+      }
     }
 
-    if (dateFrom) filtered = filtered.filter(o => o.date >= dateFrom)
-    if (dateTo) filtered = filtered.filter(o => o.date <= dateTo)
-
-    if (status === "Pending Orders") filtered = filtered.filter(o => !o.tracking_details)
-    if (status === "Completed Orders") filtered = filtered.filter(o => o.tracking_details)
-
-    setFilteredOrders(filtered)
-    setCurrentPage(1)
-  }, [search, status, dateFrom, dateTo, orders])
+    if (!dateFrom && !dateTo) {
+      loadOrders()
+    } else {
+      applyFilters()
+    }
+  }, [search, status, dateFrom, dateTo])
 
   function exportExcel() {
     const data = filteredOrders.map(o => ({
@@ -70,7 +89,6 @@ export default function Dashboard() {
       Phone: o.phone,
       Phone2: o.phone2,
       Tracking: o.tracking_details
-      // Products excluded from table
     }))
 
     const ws = XLSX.utils.json_to_sheet(data)
@@ -79,7 +97,6 @@ export default function Dashboard() {
     XLSX.writeFile(wb, "orders.xlsx")
   }
 
-  // Pagination
   const totalPages = Math.ceil(filteredOrders.length / pageSize)
   const currentOrders = filteredOrders.slice((currentPage - 1) * pageSize, currentPage * pageSize)
 
@@ -88,7 +105,6 @@ export default function Dashboard() {
 
       <h1 className="text-3xl font-bold text-gray-800">DOC Delivery Dashboard</h1>
 
-      {/* FILTER BAR */}
       <div className="flex flex-wrap gap-3 items-end bg-white p-4 rounded shadow">
 
         <div>
@@ -104,9 +120,9 @@ export default function Dashboard() {
         </div>
 
         <div>
-          <label htmlFor="date-from" className="block text-sm text-gray-700">From Date</label>
+          <label htmlFor="dateFrom" className="block text-sm text-gray-700">From Date</label>
           <input
-            id="date-from"
+            id="dateFrom"
             type="date"
             className="border p-2 rounded"
             value={dateFrom}
@@ -115,9 +131,9 @@ export default function Dashboard() {
         </div>
 
         <div>
-          <label htmlFor="date-to" className="block text-sm text-gray-700">To Date</label>
+          <label htmlFor="dateTo" className="block text-sm text-gray-700">To Date</label>
           <input
-            id="date-to"
+            id="dateTo"
             type="date"
             className="border p-2 rounded"
             value={dateTo}
@@ -139,6 +155,24 @@ export default function Dashboard() {
           </select>
         </div>
 
+        <div>
+          <label htmlFor="rows" className="block text-sm text-gray-700">Rows</label>
+          <select
+            id="rows"
+            className="border p-2 rounded"
+            value={pageSize}
+            onChange={e => {
+              setPageSize(Number(e.target.value))
+              setCurrentPage(1)
+            }}
+          >
+            <option value={10}>10</option>
+            <option value={25}>25</option>
+            <option value={50}>50</option>
+            <option value={100}>100</option>
+          </select>
+        </div>
+
         <button
           className="bg-green-500 text-white px-4 py-2 rounded"
           onClick={exportExcel}
@@ -155,7 +189,6 @@ export default function Dashboard() {
 
       </div>
 
-      {/* ORDER TABLE */}
       <OrderTable
         orders={currentOrders}
         reload={loadOrders}
@@ -163,7 +196,6 @@ export default function Dashboard() {
         onEdit={o => setShowAddEdit(o)}
       />
 
-      {/* Pagination Controls */}
       {totalPages > 1 && (
         <div className="flex justify-center space-x-2 mt-4">
           <button
@@ -173,6 +205,7 @@ export default function Dashboard() {
           >
             Prev
           </button>
+
           {Array.from({ length: totalPages }, (_, i) => (
             <button
               key={i}
@@ -182,6 +215,7 @@ export default function Dashboard() {
               {i + 1}
             </button>
           ))}
+
           <button
             disabled={currentPage === totalPages}
             className="px-3 py-1 bg-gray-200 rounded disabled:opacity-50"
@@ -192,7 +226,6 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* MODALS */}
       {showAddEdit && <AddEditOrderModal order={showAddEdit} close={() => setShowAddEdit(null)} reload={loadOrders} />}
       {showView && <ViewOrderModal order={showView} close={() => setShowView(null)} />}
     </div>
