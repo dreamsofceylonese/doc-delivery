@@ -113,12 +113,12 @@ export default function OrderTable({ orders, reload, onView, onEdit }: Props) {
                 onChange={toggleSelectAll}
               />
             </th>
-            <th className="p-2 border-b">Date</th>
-            <th className="p-2 border-b">OrderID</th>
-            <th className="p-2 border-b">Name</th>
-            <th className="p-2 border-b">Phone</th>
-            <th className="p-2 border-b">Tracking</th>
-            <th className="p-2 border-b">Actions</th>
+            <th className="p-2 border-b text-left">Date</th>
+            <th className="p-2 border-b text-left">OrderID</th>
+            <th className="p-2 border-b text-left">Name</th>
+            <th className="p-2 border-b text-left">Phone</th>
+            <th className="p-2 border-b text-left">Tracking</th>
+            <th className="p-2 border-b text-left">Actions</th>
           </tr>
         </thead>
         <tbody>
