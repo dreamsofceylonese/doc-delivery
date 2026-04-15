@@ -11,6 +11,7 @@ import * as XLSX from "xlsx"
 export default function Dashboard() {
   const [orders, setOrders] = useState<Order[]>([])
   const [filteredOrders, setFilteredOrders] = useState<Order[]>([])
+
   const [search, setSearch] = useState("")
   const [status, setStatus] = useState("All Orders")
   const [dateFrom, setDateFrom] = useState("")
@@ -23,20 +24,13 @@ export default function Dashboard() {
   const [pageSize, setPageSize] = useState(10)
 
   async function loadOrders() {
-    const today = new Date()
-    const past7Days = new Date()
-    past7Days.setDate(today.getDate() - 7)
-
     const { data, error } = await supabase
       .from("prompt_express")
       .select("*")
-      .gte("date", past7Days.toISOString().split("T")[0])
       .order("date", { ascending: false })
 
     if (!error && data) {
       setOrders(data as Order[])
-      setFilteredOrders(data as Order[])
-      setCurrentPage(1)
     }
   }
 
@@ -45,40 +39,36 @@ export default function Dashboard() {
   }, [])
 
   useEffect(() => {
-    async function applyFilters() {
-      let query = supabase.from("prompt_express").select("*")
+    let filtered = [...orders]
 
-      if (dateFrom) query = query.gte("date", dateFrom)
-      if (dateTo) query = query.lte("date", dateTo)
-
-      const { data, error } = await query.order("date", { ascending: false })
-
-      if (!error && data) {
-        let filtered = [...data]
-
-        if (search) {
-          filtered = filtered.filter(o =>
-            `${o.order_id} ${o.name} ${o.phone}`
-              .toLowerCase()
-              .includes(search.toLowerCase())
-          )
-        }
-
-        if (status === "Pending Orders") filtered = filtered.filter(o => !o.tracking_details)
-        if (status === "Completed Orders") filtered = filtered.filter(o => o.tracking_details)
-
-        setOrders(data as Order[])
-        setFilteredOrders(filtered as Order[])
-        setCurrentPage(1)
-      }
+    if (dateFrom) {
+      filtered = filtered.filter(o => o.date >= dateFrom)
     }
 
-    if (!dateFrom && !dateTo) {
-      loadOrders()
-    } else {
-      applyFilters()
+    if (dateTo) {
+      filtered = filtered.filter(o => o.date <= dateTo)
     }
-  }, [search, status, dateFrom, dateTo])
+
+    if (search) {
+      filtered = filtered.filter(o =>
+        `${o.order_id} ${o.name} ${o.phone}`
+          .toLowerCase()
+          .includes(search.toLowerCase())
+      )
+    }
+
+    if (status === "Pending Orders") {
+      filtered = filtered.filter(o => !o.tracking_details)
+    }
+
+    if (status === "Completed Orders") {
+      filtered = filtered.filter(o => o.tracking_details)
+    }
+
+    setFilteredOrders(filtered)
+    setCurrentPage(1)
+
+  }, [orders, search, status, dateFrom, dateTo])
 
   function exportExcel() {
     const data = filteredOrders.map(o => ({
@@ -98,7 +88,11 @@ export default function Dashboard() {
   }
 
   const totalPages = Math.ceil(filteredOrders.length / pageSize)
-  const currentOrders = filteredOrders.slice((currentPage - 1) * pageSize, currentPage * pageSize)
+
+  const currentOrders = filteredOrders.slice(
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize
+  )
 
   return (
     <div className="p-10 bg-gray-50 min-h-screen space-y-6">
@@ -107,8 +101,8 @@ export default function Dashboard() {
 
       <div className="flex flex-wrap gap-3 items-end bg-white p-4 rounded shadow">
 
-        <div>
-          <label htmlFor="search" className="block text-sm text-gray-700">Search</label>
+        <div className="flex flex-col">
+          <label htmlFor="search">Search</label>
           <input
             id="search"
             type="text"
@@ -119,8 +113,8 @@ export default function Dashboard() {
           />
         </div>
 
-        <div>
-          <label htmlFor="dateFrom" className="block text-sm text-gray-700">From Date</label>
+        <div className="flex flex-col">
+          <label htmlFor="dateFrom">From Date</label>
           <input
             id="dateFrom"
             type="date"
@@ -130,8 +124,8 @@ export default function Dashboard() {
           />
         </div>
 
-        <div>
-          <label htmlFor="dateTo" className="block text-sm text-gray-700">To Date</label>
+        <div className="flex flex-col">
+          <label htmlFor="dateTo">To Date</label>
           <input
             id="dateTo"
             type="date"
@@ -141,8 +135,8 @@ export default function Dashboard() {
           />
         </div>
 
-        <div>
-          <label htmlFor="status" className="block text-sm text-gray-700">Status</label>
+        <div className="flex flex-col">
+          <label htmlFor="status">Status</label>
           <select
             id="status"
             className="border p-2 rounded"
@@ -155,8 +149,8 @@ export default function Dashboard() {
           </select>
         </div>
 
-        <div>
-          <label htmlFor="rows" className="block text-sm text-gray-700">Rows</label>
+        <div className="flex flex-col" >
+          <label htmlFor="rows">Rows</label>
           <select
             id="rows"
             className="border p-2 rounded"
@@ -173,17 +167,11 @@ export default function Dashboard() {
           </select>
         </div>
 
-        <button
-          className="bg-green-500 text-white px-4 py-2 rounded"
-          onClick={exportExcel}
-        >
+        <button className="bg-green-500 text-white px-4 py-2 rounded" onClick={exportExcel}>
           Export Excel
         </button>
 
-        <button
-          className="bg-purple-500 text-white px-4 py-2 rounded"
-          onClick={() => setShowAddEdit({} as Order)}
-        >
+        <button className="bg-purple-500 text-white px-4 py-2 rounded" onClick={() => setShowAddEdit({} as Order)}>
           Add Order
         </button>
 
@@ -198,10 +186,11 @@ export default function Dashboard() {
 
       {totalPages > 1 && (
         <div className="flex justify-center space-x-2 mt-4">
+
           <button
             disabled={currentPage === 1}
-            className="px-3 py-1 bg-gray-200 rounded disabled:opacity-50"
-            onClick={() => setCurrentPage(prev => prev - 1)}
+            onClick={() => setCurrentPage(p => p - 1)}
+            className="px-3 py-1 bg-gray-200 rounded"
           >
             Prev
           </button>
@@ -209,8 +198,8 @@ export default function Dashboard() {
           {Array.from({ length: totalPages }, (_, i) => (
             <button
               key={i}
-              className={`px-3 py-1 rounded ${currentPage === i + 1 ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}
               onClick={() => setCurrentPage(i + 1)}
+              className={`px-3 py-1 rounded ${currentPage === i + 1 ? "bg-blue-500 text-white" : "bg-gray-200"}`}
             >
               {i + 1}
             </button>
@@ -218,16 +207,18 @@ export default function Dashboard() {
 
           <button
             disabled={currentPage === totalPages}
-            className="px-3 py-1 bg-gray-200 rounded disabled:opacity-50"
-            onClick={() => setCurrentPage(prev => prev + 1)}
+            onClick={() => setCurrentPage(p => p + 1)}
+            className="px-3 py-1 bg-gray-200 rounded"
           >
             Next
           </button>
+
         </div>
       )}
 
       {showAddEdit && <AddEditOrderModal order={showAddEdit} close={() => setShowAddEdit(null)} reload={loadOrders} />}
       {showView && <ViewOrderModal order={showView} close={() => setShowView(null)} />}
+
     </div>
   )
 }
