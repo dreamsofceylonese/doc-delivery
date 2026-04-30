@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { Order } from "../types/order"
 import { supabase } from "../lib/supabase"
+import { X, Search, Package, Calendar, Phone, MapPin, User, FileText, Truck } from "lucide-react"
 
 interface Props {
   order: Order
@@ -24,7 +25,6 @@ export default function AddEditOrderModal({ order, close, reload }: Props) {
   const [selectedProducts, setSelectedProducts] = useState<string[]>(order.products || [])
   const [searchKey, setSearchKey] = useState("")
 
-  // Load products from supabase
   useEffect(() => {
     async function loadProducts() {
       const { data, error } = await supabase.from("product_costing").select("product_name")
@@ -33,7 +33,6 @@ export default function AddEditOrderModal({ order, close, reload }: Props) {
     loadProducts()
   }, [])
 
-  // Toggle product selection
   function toggleProduct(p: string) {
     setSelectedProducts(prev =>
       prev.includes(p) ? prev.filter(x => x !== p) : [...prev, p]
@@ -49,7 +48,7 @@ export default function AddEditOrderModal({ order, close, reload }: Props) {
       phone2,
       description,
       tracking_details: trackingDetails,
-      couriers: '1', // auto set
+      couriers: '1',
       products: selectedProducts,
       date: orderDate,
     }
@@ -69,74 +68,106 @@ export default function AddEditOrderModal({ order, close, reload }: Props) {
   )
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-5 flex justify-center items-center z-50">
-      <div className="bg-white p-6 rounded-lg w-100 max-h-[90vh] overflow-y-auto space-y-4 shadow-lg">
-        <h2 className="text-2xl font-bold text-center mb-3">{order.id ? "Edit Order" : "Add Order"}</h2>
-
-        {/* Inputs */}
-        <div className="space-y-2">
-          <Input label="Order ID" value={order_id} setValue={setOrder_id} />
-          <InputDate label="Order Date" value={orderDate} setValue={setOrderDate} />
-          <Input label="Name" value={name} setValue={setName} />
-          <Input label="Address" value={address} setValue={setAddress} />
-          <Input label="Phone" value={phone} setValue={setPhone} />
-          <Input label="Phone 2" value={phone2} setValue={setPhone2} />
-          <Input label="Description" value={description} setValue={setDescription} />
-          <Input label="Tracking Details" value={trackingDetails} setValue={setTrackingDetails} />
+    <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex justify-center items-center z-50 p-4">
+      <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col shadow-2xl border border-slate-200">
+        
+        {/* Header */}
+        <div className="flex items-center justify-between p-6 border-b border-slate-100">
+          <div>
+            <h2 className="text-xl font-bold text-slate-800">{order.id ? "Edit Order" : "New Order"}</h2>
+            <p className="text-sm text-slate-500">Fill in the details below to manage your delivery.</p>
+          </div>
+          <button 
+          type="button" // Fixes the "button-type" error
+          onClick={close} 
+          aria-label="Close modal" // Fixes the "discernible text" error
+          title="Close" // Optional: adds a tooltip on hover
+          className="p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-400"
+        >
+          <X size={20} />
+        </button>
         </div>
 
-        {/* Product search */}
-        <div className="mt-2">
-          <label htmlFor="product-search" className="block mb-1 font-semibold text-sm">
-            Search Products
-          </label>
-          <input
-            id="product-search"
-            type="text"
-            placeholder="Search product"
-            className="w-full border rounded px-3 py-2 focus:outline-none focus:ring focus:ring-blue-200"
-            value={searchKey}
-            onChange={e => setSearchKey(e.target.value)}
-          />
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+          
+          {/* Section: Basic Info */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Input label="Order ID" icon={<Package size={16}/>} value={order_id} setValue={setOrder_id} />
+            <InputDate label="Order Date" icon={<Calendar size={16}/>} value={orderDate} setValue={setOrderDate} />
+            <Input label="Customer Name" icon={<User size={16}/>} value={name} setValue={setName} />
+            <Input label="Primary Phone" icon={<Phone size={16}/>} value={phone} setValue={setPhone} />
+            <Input label="Secondary Phone" icon={<Phone size={16}/>} value={phone2} setValue={setPhone2} />
+            <Input label="Tracking Details" icon={<Truck size={16}/>} value={trackingDetails} setValue={setTrackingDetails} />
+          </div>
+
+          <div className="space-y-4">
+            <Input label="Shipping Address" icon={<MapPin size={16}/>} value={address} setValue={setAddress} />
+            <Input label="Notes / Description" icon={<FileText size={16}/>} value={description} setValue={setDescription} />
+          </div>
+
+          <hr className="border-slate-100" />
+
+          {/* Section: Product Selection */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <label className="text-sm font-semibold text-slate-700">Select Products</label>
+              <span className="text-xs font-medium text-blue-600 bg-blue-50 px-2 py-1 rounded-full">
+                {selectedProducts.length} Selected
+              </span>
+            </div>
+            
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+              <input
+                type="text"
+                placeholder="Search products..."
+                className="w-full border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all bg-slate-50/50"
+                value={searchKey}
+                onChange={e => setSearchKey(e.target.value)}
+              />
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-48 overflow-y-auto p-1">
+              {filteredProducts.length > 0 ? (
+                filteredProducts.map((p, i) => (
+                  <label
+                    key={`${p}-${i}`} 
+                    className={`flex items-center space-x-3 p-3 rounded-xl border transition-all cursor-pointer text-sm ${
+                      selectedProducts.includes(p) 
+                        ? "bg-blue-50 border-blue-200 text-blue-700 shadow-sm" 
+                        : "bg-white border-slate-100 text-slate-600 hover:border-slate-300"
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedProducts.includes(p)}
+                      onChange={() => toggleProduct(p)}
+                      className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                    />
+                    <span className="font-medium">{p}</span>
+                  </label>
+                ))
+              ) : (
+                <div className="col-span-2 py-8 text-slate-400 text-sm text-center italic">No products matched your search.</div>
+              )}
+            </div>
+          </div>
         </div>
 
-        {/* Product checkboxes */}
-        <div className="max-h-44 overflow-y-auto gap-2 mt-2">
-          {filteredProducts.length > 0 ? (
-            filteredProducts.map((p, i) => (
-              <label
-                key={`${p}-${i}`} 
-                className={`flex items-center space-x-2 p-2  hover:bg-gray-50 cursor-pointer ${
-                  selectedProducts.includes(p) ? "bg-blue-50 border-blue-300" : ""
-                }`}
-              >
-                <input
-                  type="checkbox"
-                  checked={selectedProducts.includes(p)}
-                  onChange={() => toggleProduct(p)}
-                  className="w-4 h-4 accent-blue-600"
-                />
-                <span>{p}</span>
-              </label>
-            ))
-          ) : (
-            <div className="col-span-2 text-gray-400 text-sm text-center">No products found</div>
-          )}
-        </div>
-
-        {/* Buttons */}
-        <div className="flex justify-end space-x-3 mt-4">
+        {/* Footer */}
+        <div className="p-6 border-t border-slate-100 flex justify-end gap-3 bg-slate-50/50 rounded-b-2xl">
           <button
-            className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600"
+            className="px-5 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-200 rounded-xl transition-colors"
             onClick={close}
           >
             Cancel
           </button>
           <button
-            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+            className="px-6 py-2.5 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-lg shadow-blue-200 transition-all active:scale-95"
             onClick={save}
           >
-            Save
+            {order.id ? "Update Order" : "Create Order"}
           </button>
         </div>
       </div>
@@ -144,59 +175,45 @@ export default function AddEditOrderModal({ order, close, reload }: Props) {
   )
 }
 
-// Accessible Input component
-function Input({
-  label,
-  value,
-  setValue,
-}: {
-  label: string
-  value: string
-  setValue: (v: string) => void
-}) {
-  const id = label.toLowerCase().replace(/\s+/g, "-") + "-" + Math.random().toString(36).substr(2, 5)
-
+function Input({ label, value, setValue, icon }: { label: string; value: string; setValue: (v: string) => void; icon?: React.ReactNode }) {
+  const id = label.toLowerCase().replace(/\s+/g, "-")
   return (
-    <div>
-      <label htmlFor={id} className="block mb-1 font-semibold text-sm">
+    <div className="flex flex-col gap-1.5">
+      <label htmlFor={id} className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">
         {label}
       </label>
-      <input
-        id={id}
-        type="text"
-        value={value}
-        onChange={e => setValue(e.target.value)}
-        placeholder={`Enter ${label.toLowerCase()}`}
-        className="w-full border rounded px-3 py-2 focus:outline-none focus:ring focus:ring-blue-200"
-      />
+      <div className="relative">
+        {icon && <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">{icon}</div>}
+        <input
+          id={id}
+          type="text"
+          value={value}
+          onChange={e => setValue(e.target.value)}
+          placeholder={`Enter ${label.toLowerCase()}`}
+          className={`w-full border border-slate-200 rounded-xl ${icon ? 'pl-10' : 'pl-4'} pr-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all placeholder:text-slate-300`}
+        />
+      </div>
     </div>
   )
 }
 
-// Accessible Date Input component
-function InputDate({
-  label,
-  value,
-  setValue,
-}: {
-  label: string
-  value: string
-  setValue: (v: string) => void
-}) {
-  const id = label.toLowerCase().replace(/\s+/g, "-") + "-" + Math.random().toString(36).substr(2, 5)
-
+function InputDate({ label, value, setValue, icon }: { label: string; value: string; setValue: (v: string) => void; icon?: React.ReactNode }) {
+  const id = label.toLowerCase().replace(/\s+/g, "-")
   return (
-    <div>
-      <label htmlFor={id} className="block mb-1 font-semibold text-sm">
+    <div className="flex flex-col gap-1.5">
+      <label htmlFor={id} className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">
         {label}
       </label>
-      <input
-        id={id}
-        type="date"
-        value={value}
-        onChange={e => setValue(e.target.value)}
-        className="w-full border rounded px-3 py-2 focus:outline-none focus:ring focus:ring-blue-200"
-      />
+      <div className="relative">
+        {icon && <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">{icon}</div>}
+        <input
+          id={id}
+          type="date"
+          value={value}
+          onChange={e => setValue(e.target.value)}
+          className={`w-full border border-slate-200 rounded-xl ${icon ? 'pl-10' : 'pl-4'} pr-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all`}
+        />
+      </div>
     </div>
   )
 }

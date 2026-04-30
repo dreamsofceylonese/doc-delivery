@@ -46,8 +46,7 @@ export default function OrderTable({ orders, reload, onView, onEdit }: Props) {
       .eq("companyid", order.couriers)
       .single()
     if (!data) return
-    const url = `${data.website}?tracking=${order.tracking_details}`
-    window.open(url, "_blank")
+    window.open(`${data.website}?tracking=${order.tracking_details}`, "_blank")
   }
 
   async function printSingle(order: Order) {
@@ -62,102 +61,199 @@ export default function OrderTable({ orders, reload, onView, onEdit }: Props) {
 
   async function printOrderPDF(ordersToPrint: Order[], fileName: string) {
     const pdf = new jsPDF({ unit: "pt", format: [288, 432] })
-
     for (let i = 0; i < ordersToPrint.length; i++) {
       const order = ordersToPrint[i]
-
       const container = document.createElement("div")
-      container.style.position = "fixed"
-      container.style.left = "-10000px"
-      container.style.top = "0"
+      container.style.cssText = "position:fixed;left:-10000px;top:0;"
       document.body.appendChild(container)
-
       const root = createRoot(container)
       root.render(<LabelPreview order={order} />)
-
       await new Promise(resolve => setTimeout(resolve, 100))
-
       const canvas = await html2canvas(container, { scale: 2 })
-      const imgData = canvas.toDataURL("image/png")
       if (i > 0) pdf.addPage()
-      pdf.addImage(imgData, "PNG", 0, 0, 288, 432)
-
+      pdf.addImage(canvas.toDataURL("image/png"), "PNG", 0, 0, 288, 432)
       root.unmount()
       container.remove()
     }
-
     pdf.save(fileName)
   }
 
-  return (
-    <div>
-      <div className="mb-4 flex items-center space-x-2">
-        <button
-          className="bg-purple-600 text-white px-4 py-2 rounded"
-          onClick={bulkPrint}
-          disabled={!selected.length}
-        >
-          Bulk Print
-        </button>
-      </div>
+  const allSelected = selected.length === orders.length && orders.length > 0
+  const someSelected = selected.length > 0 && selected.length < orders.length
 
-      <table className="w-full border border-gray-300 rounded overflow-hidden bg-white">
-        <thead className="bg-gray-200">
-          <tr>
-            <th className="p-2 border-b">
-              <label htmlFor="select-all" className="sr-only">Select all orders</label>
-              <input
-                id="select-all"
-                type="checkbox"
-                checked={selected.length === orders.length && orders.length > 0}
-                onChange={toggleSelectAll}
-              />
-            </th>
-            <th className="p-2 border-b text-left">Date</th>
-            <th className="p-2 border-b text-left">OrderID</th>
-            <th className="p-2 border-b text-left">Name</th>
-            <th className="p-2 border-b text-left">Phone</th>
-            <th className="p-2 border-b text-left">Tracking</th>
-            <th className="p-2 border-b text-left">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {orders.map(o => (
-            <tr key={o.id} className="border-b last:border-b-0">
-              <td className="text-center">
-               <label htmlFor={`select-${o.id}`} className="sr-only">
-                  Select order {o.order_id}
-                </label>
-                <input
-                  id={`select-${o.id}`}
-                  type="checkbox"
-                  checked={selected.includes(o.id)}
-                  onChange={() => toggleSelect(o.id)}
-                />
-              </td>
-              <td className="p-2">{o.date}</td>
-              <td className="p-2">{o.order_id}</td>
-              <td className="p-2">{o.name}</td>
-              <td className="p-2">{o.phone}</td>
-              <td className="p-2">{o.tracking_details || ""}</td>
-              <td className="p-2 space-x-1">
-                <button className="bg-gray-500 text-white px-2 py-1 rounded" onClick={() => onView(o)}>View</button>
-                <button className="bg-yellow-500 text-white px-2 py-1 rounded" onClick={() => onEdit(o)}>Edit</button>
-                <button className="bg-blue-500 text-white px-2 py-1 rounded" onClick={() => printSingle(o)}>Print</button>
-                <button className="bg-green-500 text-white px-2 py-1 rounded" onClick={() => trackOrder(o)}>Track</button>
-                <button className="bg-red-500 text-white px-2 py-1 rounded" onClick={() => deleteOrder(o.id)}>Delete</button>
-              </td>
+  return (
+    <div
+      className="rounded-2xl overflow-hidden"
+      style={{ border: "1px solid rgba(0,0,0,0.08)", background: "#fff", boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}
+    >
+      {/* Table toolbar */}
+      {selected.length > 0 && (
+        <div
+          className="flex items-center justify-between px-5 py-3"
+          style={{ background: "#ede9fe", borderBottom: "1px solid rgba(99,102,241,0.15)" }}
+        >
+          <span className="text-sm font-medium" style={{ color: "#5b21b6" }}>
+            {selected.length} order{selected.length > 1 ? "s" : ""} selected
+          </span>
+          <button
+            onClick={bulkPrint}
+            className="flex items-center gap-2 px-4 py-1.5 rounded-lg text-sm font-medium transition-all"
+            style={{ background: "#6366f1", color: "#fff", border: "none", cursor: "pointer" }}
+            onMouseEnter={e => (e.currentTarget.style.background = "#4f46e5")}
+            onMouseLeave={e => (e.currentTarget.style.background = "#6366f1")}
+          >
+            <span>🖨</span> Bulk Print
+          </button>
+        </div>
+      )}
+
+      <div className="overflow-x-auto">
+        <table className="w-full" style={{ borderCollapse: "collapse" }}>
+          <thead>
+            <tr style={{ background: "#f8f7ff", borderBottom: "1px solid rgba(0,0,0,0.07)" }}>
+              <th className="p-4 w-10">
+                <label htmlFor="select-all" className="sr-only">Select all orders</label>
+                <div
+                  className="flex items-center justify-center w-5 h-5 rounded cursor-pointer mx-auto"
+                  style={{
+                    border: `2px solid ${allSelected ? "#6366f1" : someSelected ? "#6366f1" : "#d1d5db"}`,
+                    background: allSelected ? "#6366f1" : "transparent",
+                    position: "relative"
+                  }}
+                  onClick={toggleSelectAll}
+                >
+                  {allSelected && <span style={{ color: "#fff", fontSize: 11, lineHeight: 1 }}>✓</span>}
+                  {someSelected && !allSelected && (
+                    <span style={{ color: "#6366f1", fontSize: 14, lineHeight: 1, position: "absolute" }}>–</span>
+                  )}
+                  <input id="select-all" type="checkbox" className="sr-only" checked={allSelected} onChange={toggleSelectAll} />
+                </div>
+              </th>
+              {["Date", "Order ID", "Name", "Phone", "Tracking", "Actions"].map(h => (
+                <th
+                  key={h}
+                  className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider"
+                  style={{ color: "#6b7280" }}
+                >
+                  {h}
+                </th>
+              ))}
             </tr>
-          ))}
-          {orders.length === 0 && (
-            <tr>
-              <td colSpan={7} className="text-center p-4 text-gray-500">
-                No orders found
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
+          </thead>
+
+          <tbody>
+            {orders.map((o, idx) => {
+              const isSelected = selected.includes(o.id)
+              const isCompleted = !!o.tracking_details
+
+              return (
+                <tr
+                  key={o.id}
+                  style={{
+                    background: isSelected ? "#f5f3ff" : idx % 2 === 0 ? "#fff" : "#fafafa",
+                    borderBottom: "1px solid rgba(0,0,0,0.04)",
+                    transition: "background 0.15s"
+                  }}
+                  onMouseEnter={e => { if (!isSelected) (e.currentTarget as HTMLElement).style.background = "#f9f8ff" }}
+                  onMouseLeave={e => { if (!isSelected) (e.currentTarget as HTMLElement).style.background = idx % 2 === 0 ? "#fff" : "#fafafa" }}
+                >
+                  {/* Checkbox */}
+                  <td className="p-4 text-center">
+                    <div
+                      className="flex items-center justify-center w-5 h-5 rounded mx-auto cursor-pointer"
+                      style={{
+                        border: `2px solid ${isSelected ? "#6366f1" : "#d1d5db"}`,
+                        background: isSelected ? "#6366f1" : "transparent"
+                      }}
+                      onClick={() => toggleSelect(o.id)}
+                    >
+                      {isSelected && <span style={{ color: "#fff", fontSize: 11 }}>✓</span>}
+                      <label htmlFor={`select-${o.id}`} className="sr-only">Select order {o.order_id}</label>
+                      <input id={`select-${o.id}`} type="checkbox" className="sr-only" checked={isSelected} onChange={() => toggleSelect(o.id)} />
+                    </div>
+                  </td>
+
+                  <td className="px-4 py-3 text-sm text-gray-500">{o.date}</td>
+                  <td className="px-4 py-3">
+                    <span className="text-sm font-mono font-medium text-gray-800">#{o.order_id}</span>
+                  </td>
+                  <td className="px-4 py-3 text-sm font-medium text-gray-800">{o.name}</td>
+                  <td className="px-4 py-3 text-sm text-gray-600">{o.phone}</td>
+                  <td className="px-4 py-3">
+                    {o.tracking_details ? (
+                      <span
+                        className="inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full"
+                        style={{ background: "#dcfce7", color: "#15803d" }}
+                      >
+                        <span style={{ fontSize: 8 }}>●</span> {o.tracking_details}
+                      </span>
+                    ) : (
+                      <span
+                        className="inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full"
+                        style={{ background: "#fef3c7", color: "#92400e" }}
+                      >
+                        <span style={{ fontSize: 8 }}>●</span> Pending
+                      </span>
+                    )}
+                  </td>
+
+                  {/* Action buttons */}
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-1.5">
+                      <ActionBtn color="#6366f1" label="View" onClick={() => onView(o)} />
+                      <ActionBtn color="#f59e0b" label="Edit" onClick={() => onEdit(o)} />
+                      <ActionBtn color="#3b82f6" label="Print" onClick={() => printSingle(o)} />
+                      {o.tracking_details && o.couriers && (
+                        <ActionBtn color="#10b981" label="Track" onClick={() => trackOrder(o)} />
+                      )}
+                      <ActionBtn color="#ef4444" label="Delete" onClick={() => deleteOrder(o.id)} />
+                    </div>
+                  </td>
+                </tr>
+              )
+            })}
+
+            {orders.length === 0 && (
+              <tr>
+                <td colSpan={7} className="text-center py-14">
+                  <div className="flex flex-col items-center gap-2">
+                    <span style={{ fontSize: 32 }}>📦</span>
+                    <p className="text-gray-400 text-sm">No orders found</p>
+                  </div>
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
     </div>
+  )
+}
+
+function ActionBtn({
+  color, label, onClick
+}: { color: string; label: string; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className="text-xs font-medium px-3 py-1.5 rounded-lg transition-all"
+      style={{
+        background: `${color}18`,
+        color: color,
+        border: `1px solid ${color}30`,
+        cursor: "pointer",
+        whiteSpace: "nowrap"
+      }}
+      onMouseEnter={e => {
+        (e.currentTarget as HTMLElement).style.background = color
+        ;(e.currentTarget as HTMLElement).style.color = "#fff"
+      }}
+      onMouseLeave={e => {
+        (e.currentTarget as HTMLElement).style.background = `${color}18`
+        ;(e.currentTarget as HTMLElement).style.color = color
+      }}
+    >
+      {label}
+    </button>
   )
 }
