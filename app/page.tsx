@@ -23,7 +23,6 @@ export default function Dashboard() {
 
   const [currentPage, setCurrentPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
-  const [pageSize, setPageSize] = useState(10)
 
   async function loadOrders() {
     const { data, error } = await supabase
