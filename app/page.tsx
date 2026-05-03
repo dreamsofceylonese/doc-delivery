@@ -12,6 +12,7 @@ export default function Dashboard() {
   const [orders, setOrders] = useState<Order[]>([])
   const [filteredOrders, setFilteredOrders] = useState<Order[]>([])
 
+
   const [search, setSearch] = useState("")
   const [status, setStatus] = useState("All Orders")
   const [dateFrom, setDateFrom] = useState("")
@@ -21,6 +22,7 @@ export default function Dashboard() {
   const [showView, setShowView] = useState<null | Order>(null)
 
   const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize, setPageSize] = useState(10)
   const [pageSize, setPageSize] = useState(10)
 
   async function loadOrders() {

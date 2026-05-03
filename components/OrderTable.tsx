@@ -32,6 +32,14 @@ export default function OrderTable({ orders, reload, onView, onEdit }: Props) {
     }
   }
 
+  function toggleSelectAll() {
+    if (selected.length === orders.length) {
+      setSelected([])
+    } else {
+      setSelected(orders.map(o => o.id))
+    }
+  }
+
   async function deleteOrder(id: string) {
     if (!confirm("Are you sure you want to delete this order?")) return
     await supabase.from("prompt_express").delete().eq("id", id)
