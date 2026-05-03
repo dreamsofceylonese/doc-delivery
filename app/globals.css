@@ -1,2 +1,5 @@
 @import "tailwindcss";
 
+:root {
+  --brand-color: lab(46.27% -47.56 48.58);
+}
